@@ -20,14 +20,15 @@ Example:
 
 import structlog
 
-from flare_ai_defai.prompts.schemas import (
+from ..prompts.schemas import (
     Prompt,
     SemanticRouterResponse,
     TokenSendResponse,
     TokenSwapResponse,
 )
-from flare_ai_defai.prompts.templates import (
+from ..prompts.templates import (
     CONVERSATIONAL,
+    EXTRACT_SWAP_OPERATION,
     GENERATE_ACCOUNT,
     REMOTE_ATTESTATION,
     SEMANTIC_ROUTER,
@@ -139,6 +140,15 @@ class PromptLibrary:
                 response_schema=None,
                 response_mime_type=None,
                 category="conversational",
+            ),
+            Prompt(
+                name="extract_swap_operation",
+                description="Extract structured swap operation details with enhanced validation for risk assessment",
+                template=EXTRACT_SWAP_OPERATION,
+                required_inputs=["user_input"],
+                response_schema=None,
+                response_mime_type="application/json",
+                category="defai",
             ),
             Prompt(
                 name="tx_confirmation",

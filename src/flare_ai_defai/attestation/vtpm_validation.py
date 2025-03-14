@@ -72,7 +72,9 @@ class PKICertificates:
     root_cert: x509.Certificate
 
 
-type JSONWebKeySet = dict[str, list[dict[str, str]]]
+from typing import TypeAlias, Dict, List
+
+JSONWebKeySet: TypeAlias = Dict[str, List[Dict[str, str]]]
 
 # Constants
 ALGO: Final[str] = "RS256"

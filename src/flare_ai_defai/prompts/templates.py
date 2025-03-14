@@ -200,6 +200,72 @@ A user wants to perform a remote attestation with the TEE, make the following pr
 """
 
 
+EXTRACT_SWAP_OPERATION: Final = """
+Extract complete swap operation details from user input with enhanced precision for risk assessment.
+
+Extract ALL of the following fields (when present):
+
+1. INPUT TOKEN (token_in)
+   Valid formats:
+   • Native token: "FLR" or "flr"
+   • Any ERC20 token symbol: e.g., "USDC", "WFLR", "USDT", "sFLR", "WETH"
+   • Full address format: "0x..."
+   • Case-insensitive match, normalize to uppercase
+   • REQUIRED field, FAIL if not found
+
+2. OUTPUT TOKEN (token_out)
+   Valid formats:
+   • Same rules as input token
+   • Must be different from input token
+   • REQUIRED field, FAIL if not found
+
+3. AMOUNT
+   Number extraction rules:
+   • Convert written numbers to digits (e.g., "five" → 5.0)
+   • Handle decimal and integer inputs (normalize to string)
+   • Valid formats include: "1.5", "0.5", "1", "100", "5 FLR", "10 USDC"
+   • REQUIRED field, FAIL if no valid amount found
+
+4. SLIPPAGE (optional)
+   • Default: "1.0" (1% slippage tolerance)
+   • Extract percentage if specified: "0.5%", "1%", "2.5%" → "0.5", "1.0", "2.5"
+   • Convert to string format without % symbol
+
+5. PROTOCOL (optional)
+   • Default: "raindex"
+   • Valid values: "raindex", "sparkdex", "cyclo", "kinetic"
+   • Extract specific protocol name if mentioned
+   • Case-insensitive match, normalize to lowercase
+
+Input: ${user_input}
+
+Response format:
+{
+  "token_in": "<TOKEN_SYMBOL_OR_ADDRESS>",
+  "token_out": "<TOKEN_SYMBOL_OR_ADDRESS>",
+  "amount": "<AMOUNT_AS_STRING>",
+  "slippage": "<SLIPPAGE_PERCENTAGE>",
+  "protocol": "<PROTOCOL_NAME>"
+}
+
+Processing rules:
+- All required fields MUST be present
+- Optional fields should use defaults if not specified
+- DO NOT infer missing required values
+- DO NOT allow same token pairs
+- Normalize token symbols to uppercase
+- Normalize protocol names to lowercase
+- FAIL if any required field is missing
+
+Examples:
+✓ "swap 100 FLR to USDC with 0.5% slippage on RainDEX" → 
+  {"token_in": "FLR", "token_out": "USDC", "amount": "100", "slippage": "0.5", "protocol": "raindex"}
+✓ "exchange 50.5 flr for WETH" → 
+  {"token_in": "FLR", "token_out": "WETH", "amount": "50.5", "slippage": "1.0", "protocol": "raindex"}
+✗ "swap flr to flr" → FAIL (same token)
+✗ "swap tokens" → FAIL (missing amount)
+"""
+
 TX_CONFIRMATION: Final = """
 Respond with a confirmation message for the successful transaction that:
 

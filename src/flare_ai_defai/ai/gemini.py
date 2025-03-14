@@ -6,13 +6,13 @@ with Google's Generative AI service. It handles chat sessions, content generatio
 and message management while maintaining a consistent AI personality.
 """
 
-from typing import Any, override
+from typing import Any
 
 import google.generativeai as genai
 import structlog
 from google.generativeai.types import ContentDict
 
-from flare_ai_defai.ai.base import BaseAIProvider, ModelResponse
+from ..ai.base import BaseAIProvider, ModelResponse
 
 logger = structlog.get_logger(__name__)
 
@@ -75,16 +75,17 @@ class GeminiProvider(BaseAIProvider):
         """
         genai.configure(api_key=api_key)  # pyright: ignore [reportPrivateImportUsage]
         self.chat: genai.ChatSession | None = None  # pyright: ignore [reportPrivateImportUsage]
+        # Initialize model without system instruction (will be used during chat session creation)
         self.model = genai.GenerativeModel(  # pyright: ignore [reportPrivateImportUsage]
             model_name=model,
-            system_instruction=kwargs.get("system_instruction", SYSTEM_INSTRUCTION),
         )
+        # Store system instruction for later use when creating chat sessions
+        self.system_instruction = kwargs.get("system_instruction", SYSTEM_INSTRUCTION)
         self.chat_history: list[ContentDict] = [
             ContentDict(parts=["Hi, I'm Artemis"], role="model")
         ]
         self.logger = logger.bind(service="gemini")
 
-    @override
     def reset(self) -> None:
         """
         Reset the provider state.
@@ -97,7 +98,6 @@ class GeminiProvider(BaseAIProvider):
             "reset_gemini", chat=self.chat, chat_history=self.chat_history
         )
 
-    @override
     def generate(
         self,
         prompt: str,
@@ -120,12 +120,19 @@ class GeminiProvider(BaseAIProvider):
                     - candidate_count: Number of generated candidates
                     - prompt_feedback: Feedback on the input prompt
         """
-        response = self.model.generate_content(
-            prompt,
-            generation_config=genai.GenerationConfig(  # pyright: ignore [reportPrivateImportUsage]
-                response_mime_type=response_mime_type, response_schema=response_schema
-            ),
-        )
+        try:
+            # Try with the updated API parameters
+            response = self.model.generate_content(
+                prompt,
+                generation_config=genai.GenerationConfig(  # pyright: ignore [reportPrivateImportUsage]
+                    response_mime_type=response_mime_type, response_schema=response_schema
+                ),
+            )
+        except TypeError:
+            # Fall back to basic generation without schema parameters
+            self.logger.warning("advanced_generation_config_not_supported", 
+                                fallback="Using basic generation without schema parameters")
+            response = self.model.generate_content(prompt)
         self.logger.debug("generate", prompt=prompt, response_text=response.text)
         return ModelResponse(
             text=response.text,
@@ -136,7 +143,6 @@ class GeminiProvider(BaseAIProvider):
             },
         )
 
-    @override
     def send_message(
         self,
         msg: str,
@@ -158,7 +164,20 @@ class GeminiProvider(BaseAIProvider):
                     - prompt_feedback: Feedback on the input message
         """
         if not self.chat:
-            self.chat = self.model.start_chat(history=self.chat_history)
+            # Initialize the chat session
+            try:
+                # Try using system_instruction if supported by the API version
+                self.chat = self.model.start_chat(
+                    history=self.chat_history,
+                    system_instruction=self.system_instruction
+                )
+            except TypeError:
+                # Fall back to basic initialization without system instruction
+                self.logger.warning("system_instruction_not_supported", fallback="Using basic chat initialization")
+                self.chat = self.model.start_chat(history=self.chat_history)
+                # Manually add system instruction as first message if needed
+                if self.system_instruction and not self.chat_history:
+                    self.chat.send_message(f"System: {self.system_instruction}")
         response = self.chat.send_message(msg)
         self.logger.debug("send_message", msg=msg, response_text=response.text)
         return ModelResponse(

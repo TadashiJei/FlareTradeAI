@@ -14,7 +14,16 @@ Flare AI Kit template for AI x DeFi (DeFAI).
   Perform token operations and generate wallets from within the TEE.
 
 - **Gemini 2.0 + over 300 LLMs supported**  
-  Utilize Google Gemini’s latest model with structured query support for advanced AI functionalities.
+  Utilize Google Gemini's latest model with structured query support for advanced AI functionalities.
+
+- **DeFi Protocol Integrations**  
+  Seamlessly interact with Flare ecosystem protocols (SparkDEX, Kinetic, Cyclo, RainDEX) using natural language.
+
+- **Comprehensive Risk Assessment**  
+  Evaluate transaction risks before execution with detailed risk scoring and warnings.
+
+- **Natural Language Processing for DeFi**  
+  Transform simple commands like "Swap 10 ETH to USDC" into executable blockchain transactions.
 
 <img width="500" alt="Artemis" src="https://github.com/user-attachments/assets/921fbfe2-9d52-496c-9b48-9dfc32a86208" />
 
@@ -92,10 +101,73 @@ Flare AI DeFAI is composed of a Python-based backend and a JavaScript frontend. 
    npm start
    ```
 
+## 🤖 Using the DeFi Agent
+
+FlareTrade includes a powerful DeFi agent that can process natural language commands and execute them securely within a TEE environment.
+
+### Demo Script
+
+Run the included demo script to see the DeFi agent in action:
+
+```bash
+python3 demo.py --wallet YOUR_WALLET_ADDRESS
+```
+
+Add the `--no-tee` flag to run without TEE protection (for testing only).
+
+### Supported Commands
+
+The DeFi agent supports a wide range of natural language commands, including:
+
+- **Swapping tokens**: "Swap 10 ETH to USDC on SparkDEX with 0.5% slippage"
+- **Depositing assets**: "Deposit 100 USDC into Kinetic"
+- **Withdrawing assets**: "Withdraw 50 USDC from Kinetic"
+- **Staking tokens**: "Stake 10 FLR on Cyclo"
+- **Unstaking tokens**: "Unstake 5 FLR from Cyclo"
+- **Claiming rewards**: "Claim rewards from Cyclo"
+- **Borrowing assets**: "Borrow 20 ETH from Kinetic"
+- **Repaying loans**: "Repay 15 ETH loan on Kinetic"
+
+### Programmatic Usage
+
+You can also use the DeFi agent programmatically in your own code:
+
+```python
+from src.flare_ai_defai.agent.defi_agent import DeFiAgent
+
+# Initialize the agent
+agent = DeFiAgent(
+    wallet_address="YOUR_WALLET_ADDRESS",
+    use_tee=True,
+    risk_threshold="medium",
+    simulate_transactions=True,
+)
+
+# Process a natural language command
+result = agent.process_natural_language_command("Swap 10 ETH to USDC on SparkDEX")
+
+# Check the result
+if result["success"]:
+    print(f"Transaction Hash: {result['transaction_hash']}")
+else:
+    print(f"Error: {result['errors']}")
+
+# Get portfolio information
+portfolio = agent.get_portfolio()
+print(f"Total Portfolio Value: ${portfolio['total_value']:.2f} USD")
+
+# Get transaction history
+transactions = agent.get_transaction_history(limit=5)
+for tx in transactions:
+    print(f"Transaction: {tx['hash']}")
+```
+
 ## 📁 Repo Structure
 
 ```plaintext
 src/flare_ai_defai/
+├── agent/                  # DeFi agent implementation
+│   └── defi_agent.py      # Main DeFi agent class
 ├── ai/                     # AI Provider implementations
 │   ├── base.py            # Base AI provider interface
 │   ├── gemini.py          # Google Gemini integration
@@ -108,7 +180,13 @@ src/flare_ai_defai/
 │   └── vtpm_validation.py    # Token validation
 ├── blockchain/              # Blockchain operations
 │   ├── explorer.py        # Chain explorer client
-│   └── flare.py          # Flare network provider
+│   ├── flare.py          # Flare network provider
+│   ├── protocols/        # DeFi protocol implementations
+│   ├── risk/             # Risk assessment system
+│   ├── transaction.py    # Transaction simulation and validation
+│   └── wallet.py         # Secure wallet management
+├── nlp/                   # Natural language processing
+│   └── defi_parser.py    # DeFi command parser
 ├── prompts/              # AI system prompts & templates
 │    ├── library.py        # Prompt module library
 │    ├── schemas.py        # Schema definitions
@@ -118,6 +196,18 @@ src/flare_ai_defai/
 ├── main.py          # Primary entrypoint
 └── settings.py       # Configuration settings error
 ```
+
+## 📚 Documentation
+
+Comprehensive documentation is available in the `docs/` directory:
+
+- [DeFi Protocol Integrations](docs/defi_integrations.md)
+- [Protocol Factory](docs/protocol_factory.md)
+- [Risk Assessment System](docs/risk_assessment.md)
+- [Transaction Validation](docs/transaction_validation.md)
+- [Secure Wallet Management](docs/wallet_management.md)
+- [Natural Language Processing](docs/nlp_processing.md)
+- [TEE Attestation](docs/tee_attestation.md)
 
 ## 🚀 Deploy on TEE
 
@@ -192,100 +282,3 @@ type=pd-standard \
   --shielded-integrity-monitoring \
   --reservation-affinity=any \
   --confidential-compute-type=SEV
-```
-
-#### Post-deployment
-
-1. After deployment, you should see an output similar to:
-
-   ```plaintext
-   NAME          ZONE           MACHINE_TYPE    PREEMPTIBLE  INTERNAL_IP  EXTERNAL_IP    STATUS
-   defai-team1   us-central1-c  n2d-standard-2               10.128.0.18  34.41.127.200  RUNNING
-   ```
-
-2. It may take a few minutes for Confidential Space to complete startup checks. You can monitor progress via the [GCP Console](https://console.cloud.google.com/welcome?project=verifiable-ai-hackathon) logs.
-   Click on **Compute Engine** → **VM Instances** (in the sidebar) → **Select your instance** → **Serial port 1 (console)**.
-
-   When you see a message like:
-
-   ```plaintext
-   INFO:     Uvicorn running on http://0.0.0.0:8080 (Press CTRL+C to quit)
-   ```
-
-   the container is ready. Navigate to the external IP of the instance (visible in the **VM Instances** page) to access the Chat UI.
-
-### 🔧 Troubleshooting
-
-If you encounter issues, follow these steps:
-
-1. **Check Logs:**
-
-   ```bash
-   gcloud compute instances get-serial-port-output $INSTANCE_NAME --project=verifiable-ai-hackathon
-   ```
-
-2. **Verify API Key(s):**  
-   Ensure that all API Keys are set correctly (e.g. `GEMINI_API_KEY`).
-
-3. **Check Firewall Settings:**  
-   Confirm that your instance is publicly accessible on port `80`.
-
-## 💡 Next Steps
-
-Once your instance is running, access the Chat UI using its public IP address. Here are some example interactions to try:
-
-- **"Create an account for me"**
-- **"Transfer 10 C2FLR to 0x000000000000000000000000000000000000dEaD"**
-- **"Show me your remote attestation"**
-
-### Future Upgrades
-
-- **TLS Communication:**  
-  Implement RA-TLS for encrypted communication.
-
-- **Expanded Flare Ecosystem Support:**
-  - **Token Swaps:** via [SparkDEX](http://sparkdex.ai)
-  - **Borrow-Lend:** via [Kinetic](https://linktr.ee/kinetic.market)
-  - **Trading Strategies:** via [RainDEX](https://www.rainlang.xyz)
-
-### Example Use Cases & Project Ideas
-
-Below are several detailed project ideas demonstrating how the template can be used to build autonomous AI agents for Flare's DeFi ecosystem:
-
-#### NLP interface for Flare ecosystem
-
-Implement a natural language command parser that translates user intent into specific protocol actions, e.g.:
-
-```plaintext
-"Swap 100 FLR to USDC and deposit as collateral on Kinetic" →
-{
-  action: ["swap", "deposit"],
-  protocols: ["SparkDEX", "Kinetic"],
-  amounts: [100],
-  tokens: ["FLR", "USDC"]
-}
-```
-
-- Add cross-protocol optimization features:
-
-  - Automatic route splitting across DEXs for better prices
-  - Gas optimization by batching multiple transactions
-  - Yield optimization by comparing lending rates across protocols
-
-- Automated token swaps and integrations with Flare ecosystem applications:
-  - [SparkDEX](http://sparkdex.ai/): Token swaps + Perpetual futures
-  - [Kinetic](http://kinetic.market/): Borrow-lend protocol
-  - [RainDEX](http://rainlang.xyz): Trading strategies
-  - [Cycle](https://cyclo.finance): Liquidation-free leverage
-
-### RAG Knowledge
-
-Connect the DeFAI agent with the RAG from [`flare-ai-rag`](https://github.com/flare-foundation/flare-ai-rag) trained on datasets such as:
-
-- [Flare Developer Hub](https://dev.flare.network)
-- [Flare Website](https://flare.network)
-- [Flare X](https://x.com/FlareNetworks)
-
-### Transaction simulation
-
-Use a transaction simulation framework such as [Tenderly Simulator](https://tenderly.co/transaction-simulator) to show users the expected outcome of their transaction.

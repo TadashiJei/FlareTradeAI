@@ -16,14 +16,14 @@ import structlog
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from flare_ai_defai import (
-    ChatRouter,
-    FlareProvider,
-    GeminiProvider,
-    PromptService,
-    Vtpm,
-)
-from flare_ai_defai.settings import settings
+# Fix imports to use relative paths
+from .api import ChatRouter
+from .blockchain import FlareProvider
+from .ai import GeminiProvider
+from .prompts import PromptService
+from .attestation import Vtpm
+from .api.routes import defi_operations
+from .settings import settings
 
 logger = structlog.get_logger(__name__)
 
@@ -55,7 +55,7 @@ def create_app() -> FastAPI:
         - simulate_attestation: Boolean flag for attestation simulation
     """
     app = FastAPI(
-        title="AI Agent API", version=settings.api_version, redirect_slashes=False
+        title="AI Agent API", version=settings.api_version, redirect_slashes=True
     )
 
     # Configure CORS middleware with settings from configuration
@@ -70,13 +70,16 @@ def create_app() -> FastAPI:
     # Initialize router with service providers
     chat = ChatRouter(
         ai=GeminiProvider(api_key=settings.gemini_api_key, model=settings.gemini_model),
-        blockchain=FlareProvider(web3_provider_url=settings.web3_provider_url),
+        blockchain=FlareProvider(web3_provider_url=settings.web3_rpc_url),
         attestation=Vtpm(simulate=settings.simulate_attestation),
         prompts=PromptService(),
     )
 
     # Register chat routes with API
     app.include_router(chat.router, prefix="/api/routes/chat", tags=["chat"])
+    
+    # Register DeFi operations routes with API
+    app.include_router(defi_operations.router, prefix="/api/routes", tags=["defi"])
     return app
 
 
@@ -98,7 +101,7 @@ def start() -> None:
     """
     import uvicorn
 
-    uvicorn.run(app, host="0.0.0.0", port=8080)  # noqa: S104
+    uvicorn.run(app, host="0.0.0.0", port=8081)  # noqa: S104
 
 
 if __name__ == "__main__":
